@@ -7,6 +7,7 @@
 #include <cstring>
 #include <regex>
 #include <fstream>
+#include <iostream>
 
 #include "keyboarddefs.hpp"
 
@@ -60,7 +61,7 @@ std::pair<uint16_t, uint16_t> utils::getKeyboardIdentifiers(const fs::directory_
     return {0, 0};
 }
 
-std::vector<std::vector<uint8_t>> split_data(const uint8_t* data, const size_t data_length) {
+std::vector<std::vector<uint8_t>> utils::split_data(const uint8_t* data, const size_t data_length) {
     constexpr size_t NUM_CHUNKS = 9;
 
     std::vector<std::vector<uint8_t>> chunks(NUM_CHUNKS);
@@ -81,4 +82,17 @@ std::vector<std::vector<uint8_t>> split_data(const uint8_t* data, const size_t d
     }
 
     return chunks;
+}
+
+std::string utils::wstr2str(const std::wstring &wstr) {
+    std::string str(wstr.begin(), wstr.end());
+    return str;
+}
+
+void utils::printHexData(const unsigned char *data, int length) {
+    for (int i = 0; i < length; i++) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0')
+        << static_cast<int>(data[i]) << " ";
+    }
+    std::cout << std::dec << std::endl;
 }

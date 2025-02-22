@@ -5,108 +5,89 @@
 #include "Ajazz.hpp"
 
 #include <cstring>
+#include <filesystem>
 #include <iostream>
+#include <thread>
+#include <unistd.h>
+
+#include "utils.hpp"
+#include "lodepng/lodepng.h"
+
+#define HID_SET_REPORT 0x09
 
 Ajazz::Ajazz(const uint16_t vid, const uint16_t pid) {
-    int result = libusb_init(&this->ctx);
-    if (result < 0) {
-        throw std::runtime_error("libusb_init: " + getUsbError(result));
+    hid_init();
+
+    this->handle = hid_open(vid, pid, nullptr);
+    if (!handle) {
+        throw std::runtime_error("Couldn't open device: " + utils::wstr2str(hid_error(this->handle)));
     }
 
-    this->handle = libusb_open_device_with_vid_pid(ctx, vid, pid);
-    if (this->handle == nullptr) {
-        throw std::runtime_error("libusb_open_device_with_vid_pid: failed");
-    }
+    this->vid = vid,
+    this->pid = pid;
 }
 
 Ajazz::~Ajazz() {
     if (this->handle) {
-        libusb_close(this->handle);
+        hid_close(this->handle);
     }
 
-    if (this->ctx) {
-        libusb_exit(ctx);
-    }
+    hid_exit();
 }
 
-std::string Ajazz::getUsbError(const int errorCode) {
-    const std::string errorName(libusb_error_name(errorCode));
-    const std::string error(libusb_strerror(errorCode));
-    return errorName + " - " + error;
-}
+KeyboardInformation Ajazz::getHardwareInformation() const {
+    wchar_t manufacturer[255];
+    wchar_t product[255];
+    wchar_t serialNumber[255];
 
-void Ajazz::printHexData(const unsigned char *data, int length) {
-    std::cout << "Data: ";
-    for (int i = 0; i < length; i++) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0')
-        << static_cast<int>(data[i]) << " ";
-    }
-    std::cout << std::dec << std::endl;
-}
-
-/*void Ajazz::sendPacket(uint8_t *packet, const size_t length) const {
-    std::cout << "Sending mode command:" << std::endl;
-    printHexData(packet, PACKET_LENGTH);
-
-    int transferred;
-    int result = libusb_interrupt_transfer(this->handle,
-                              0x00,
-                              packet,
-                              static_cast<int>(length),
-                              &transferred,
-                              5000);
-
+    int result = hid_get_manufacturer_string(this->handle, manufacturer, 255);
     if (result < 0) {
-        throw std::runtime_error("libusb_interrupt_transfer (OUT): " + getUsbError(result));
+        throw std::runtime_error("Couldn't get manufacturer string");
     }
 
-    uint8_t data[PACKET_LENGTH];
-    int received;
-    result = libusb_interrupt_transfer(this->handle,
-                              0x80,
-                              data,
-                              static_cast<int>(length),
-                              &received,
-                              5000);
-
+    result = hid_get_product_string(this->handle, product, 255);
     if (result < 0) {
-        throw std::runtime_error("libusb_interrupt_transfer (IN): " + getUsbError(result));
+        throw std::runtime_error("Couldn't get manufacturer string");
     }
 
-    std::cout << "Received data" << std::endl;
-    printHexData(data, received);
-}*/
+    result = hid_get_serial_number_string(this->handle, serialNumber, 255);
+    if (result < 0) {
+        throw std::runtime_error("Couldn't get manufacturer string");
+    }
+
+    return {
+        .vendorID = this->vid,
+        .productID = this->pid,
+        .manufacturer = std::wstring{manufacturer},
+        .product = std::wstring{product},
+        .serialNumber = std::wstring{serialNumber},
+    };
+}
+
 
 void Ajazz::sendInterruptPacket(uint8_t *packet, const size_t length) const {
-    constexpr unsigned char endpoint = 0x03;
-    int actual_length;
-    const int result = libusb_interrupt_transfer(
-        this->handle,
-        endpoint,
-        packet,
-        length,
-        &actual_length,
-        5000);
 
-    if (result < 0) {
-        throw std::runtime_error("Interrupt transfer error: " + getUsbError(result));
-    }
 }
 
-void Ajazz::sendControlPacket(uint8_t *packet, const size_t length) const {
-    const int result = libusb_control_transfer(
-        this->handle,
-        0x21,
-        0x09,
-        0x0300,
-        3,
-        packet,
-        length,
-        5000);
+void Ajazz::receiveInterruptPacket(uint8_t *packet, const size_t length) const {
 
-    if (result < 0) {
-        throw std::runtime_error("Control transfer error: " + getUsbError(result));
+}
+
+
+void Ajazz::sendControlPacket(const uint8_t *packet, const size_t length, const int max_retries) const {
+    for (int i = 0; i < max_retries; i++) {
+        if (hid_send_feature_report(this->handle, packet, length) >= 0) return;
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
+    throw std::runtime_error("Ajazz::sendControlPacket error: " + utils::wstr2str(hid_error(this->handle)));
+}
+
+void Ajazz::receiveControlPacket(uint8_t *packet, const size_t length, const int max_retries) const {
+    for (int i = 0; i < max_retries; i++) {
+        if (hid_get_feature_report(this->handle, packet, length) >= 0) return;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    //throw std::runtime_error("Ajazz::receiveControlPacket error: " + utils::wstr2str(hid_error(this->handle)));
 }
 
 
@@ -127,7 +108,7 @@ void Ajazz::setMode(const LightingMode mode, const uint8_t r, const uint8_t g, c
     }
 
     Packets::ModePacket packet{};
-    packet.mode = mode;
+    packet.mode = static_cast<uint8_t>(mode);
     packet.r = r;
     packet.g = g;
     packet.b = b;
@@ -141,18 +122,46 @@ void Ajazz::setMode(const LightingMode mode, const uint8_t r, const uint8_t g, c
     uint8_t data[PACKET_LENGTH];
     memcpy(data, &packet, PACKET_LENGTH);
 
-    this->sendControlPacket(Packets::START, PACKET_LENGTH);
-    this->sendControlPacket(Packets::START_MODE, PACKET_LENGTH);
-    this->sendControlPacket(data, PACKET_LENGTH);
-    this->sendControlPacket(Packets::FINISH, PACKET_LENGTH);
+    hid_set_nonblocking(this->handle, 0);
+
+    auto* received = static_cast<uint8_t *>(malloc(PACKET_LENGTH));
+    hid_send_feature_report(this->handle, Packets::START, PACKET_LENGTH);
+    this->receiveControlPacket(received, RESPONSE_PACKET_LENGTH);
+
+    hid_send_feature_report(this->handle, Packets::START_MODE, PACKET_LENGTH);
+    this->receiveControlPacket(received, RESPONSE_PACKET_LENGTH);
+
+    hid_send_feature_report(this->handle, data, PACKET_LENGTH);
+    this->receiveControlPacket(received, RESPONSE_PACKET_LENGTH);
+
+    hid_send_feature_report(this->handle, Packets::FINISH, PACKET_LENGTH);
+    this->receiveControlPacket(received, RESPONSE_PACKET_LENGTH);
+
+    free(received);
 }
 
 void Ajazz::uploadGIF(const std::string& path) const {
+    if (!std::filesystem::exists(path)) {
+        throw std::runtime_error("This file does not exists");
+    }
 
-    uint8_t* data = Packets::START_IMAGE_DATA;
+    std::vector<unsigned char> png;
+    std::vector<unsigned char> image;
+    unsigned width, height;
 
-    this->sendControlPacket(Packets::START, PACKET_LENGTH);
-    this->sendControlPacket(Packets::START_IMAGE, PACKET_LENGTH);
-    this->sendInterruptPacket(data, IMAGE_CHUNK_SIZE);
-    this->sendControlPacket(Packets::FINISH, PACKET_LENGTH);
+    unsigned error = lodepng::load_file(png, path);
+    if (error) {
+        throw std::runtime_error("lodepng::load_file error: " + std::string(lodepng_error_text(error)));
+    }
+    error = lodepng::decode(image, width, height, png);
+    if (error) {
+        throw std::runtime_error("lodepng::decode error: " + std::string(lodepng_error_text(error)));
+    }
+
+    utils::printHexData(image.data(), image.size());
+
+    //this->sendControlPacket(Packets::START, PACKET_LENGTH);
+    //this->sendControlPacket(Packets::START_IMAGE, PACKET_LENGTH);
+    //this->sendInterruptPacket(data, IMAGE_CHUNK_SIZE);
+    //this->sendControlPacket(Packets::FINISH, PACKET_LENGTH);
 }

@@ -6,4 +6,4 @@ file(GLOB_RECURSE SOURCES src/**)
 
 add_executable(ak820proLED ${SOURCES})
 
-target_link_libraries(ak820proLED PRIVATE usb-1.0)
+target_link_libraries(ak820proLED PRIVATE hidapi-libusb)

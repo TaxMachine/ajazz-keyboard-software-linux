@@ -7,7 +7,7 @@
 
 #include <iomanip>
 #include <string>
-#include <libusb-1.0/libusb.h>
+#include <hidapi/hidapi.h>
 
 #include "keyboarddefs.hpp"
 
@@ -70,8 +70,7 @@ namespace Packets {
     static uint8_t START[PACKET_LENGTH] = {COMMAND_PREFIX, START_COMMAND, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
     static uint8_t FINISH[PACKET_LENGTH] = {COMMAND_PREFIX, FINISH_COMMAND, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
     static uint8_t START_MODE[PACKET_LENGTH] = {COMMAND_PREFIX, MODE_COMMAND, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
-    static uint8_t START_IMAGE[PACKET_LENGTH] = {COMMAND_PREFIX, GIF_COMMAND, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09};
-    static uint8_t START_IMAGE_DATA[IMAGE_CHUNK_SIZE] = {0x01, 0x19};
+    static uint8_t START_IMAGE[PACKET_LENGTH] = {COMMAND_PREFIX, IMAGE_COMMAND, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09};
 }
 
 class Ajazz {
@@ -80,18 +79,19 @@ public:
     ~Ajazz();
 
     void sendInterruptPacket(uint8_t* packet, size_t length) const;
-    void sendControlPacket(uint8_t* packet, size_t length) const;
+    void receiveInterruptPacket(uint8_t* packet, size_t length) const;
+    void sendControlPacket(const uint8_t* packet, size_t length, int max_retries = 3) const;
+    void receiveControlPacket(uint8_t* packet, size_t length, int max_retries = 3) const;
 
+    KeyboardInformation getHardwareInformation() const;
     void setColor(uint8_t r, uint8_t g, uint8_t b) const;
     void setMode(LightingMode mode, uint8_t r = 255, uint8_t g = 0 , uint8_t b = 0,
                 bool rainbow = true, int brightness = MAX_BRIGHTNESS, int speed = MAX_SPEED, DIRECTION direction = LEFT) const;
     void uploadGIF(const std::string& path) const;
 private:
-    libusb_context* ctx = nullptr;
-    libusb_device_handle* handle = nullptr;
-
-    static void printHexData(const unsigned char* data, int length);
-    static std::string getUsbError(int errorCode);
+    uint16_t vid;
+    uint16_t pid;
+    hid_device* handle = nullptr;
 };
 
 #endif //AJAZZ_HPP
