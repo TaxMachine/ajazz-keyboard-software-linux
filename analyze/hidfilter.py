@@ -48,7 +48,7 @@ def hexdump(src, length=16, sep='.'):
 def encode(data: List[int]) -> List[str]:
     return ["0x" + hex(byte)[2:].zfill(2) for byte in data]
 
-capture = pyshark.FileCapture("/home/taxmachine/Downloads/direction.pcapng", include_raw=True, use_json=True)
+capture = pyshark.FileCapture("/home/taxmachine/Downloads/sleep.pcapng", include_raw=True, use_json=True)
 f = open("output_direction.txt", "w")
 
 for packet in capture:
