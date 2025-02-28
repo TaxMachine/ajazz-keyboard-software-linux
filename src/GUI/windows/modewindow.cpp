@@ -8,237 +8,232 @@
 
 #include <imgui.h>
 #include <iostream>
-#include <thread>
+
+#include "../backends/imgui_impl_opengl3.h"
+#include "../backends/imgui_impl_glfw.h"
+#include "../../constants.hpp"
+#include "../../utils/rgb.hpp"
+
+static int modeIdx = 0;
+static int sleepIdx = 0;
+static int directionIdx = 0;
+static int selectedMode = 1;
+static int selectedTime = 0;
+static int selectedDirection = 0;
+static bool showColorPicker = false;
+static bool showColorPickerButton = false;
 
 void AjazzGUI::changeMode() {
+    uint8_t r, g, b;
+    const auto keyboard_color = RGB(GetConfig()->keyboard_rgb);
+    keyboard_color.toRGB(&r, &g, &b);
+
+    if (GetConfig()->mode >= LIGHT_MODES.size() ||
+        GetConfig()->direction >= DIRECTIONS.size() ||
+        GetConfig()->sleep_delay >= SLEEP_DELAY.size()) {
+            std::cerr << "Invalid array index!" << std::endl;
+            return;
+        }
+
+    std::cout << "Changing mode to " << std::endl;
+    std::cout << "Mode: " << LIGHT_MODES[GetConfig()->mode] << std::endl;
+    std::cout << "RGB: " << std::to_string(r) << " " << std::to_string(g) << " " << std::to_string(b) << std::endl;
+    std::cout << "Rainbow?: " << GetConfig()->rainbow << std::endl;
+    std::cout << "Brightness: " << GetConfig()->brightness << std::endl;
+    std::cout << "Speed: " << GetConfig()->speed << std::endl;
+    std::cout << "Direction: " << DIRECTIONS.at(GetConfig()->direction) << std::endl;
+    std::cout << "LED Sleep delay: " << SLEEP_DELAY.at(GetConfig()->sleep_delay) << std::endl;
+
+    std::cout.flush();
+
     try {
-        this->m_keyboard.setMode(
-                this->m_mode,
-                static_cast<uint8_t>(this->m_keyboardRGBColor[0] * 255.0f),
-                static_cast<uint8_t>(this->m_keyboardRGBColor[1] * 255.0f),
-                static_cast<uint8_t>(this->m_keyboardRGBColor[2] * 255.0f),
-                this->m_rainbow,
-                this->m_brightness,
-                this->m_speed,
-                this->m_direction);
-    } catch (std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        GetKeyboard()->openHandle();
+
+        GetKeyboard()->setModeAsync(
+                    GetConfig()->mode,
+                    r,
+                    g,
+                    b,
+                    GetConfig()->rainbow,
+                    GetConfig()->brightness,
+                    GetConfig()->speed,
+                    GetConfig()->direction);
+        GetKeyboard()->setSleepTimeAsync(GetConfig()->sleep_delay);
+
+        GetKeyboard()->closeHandle();
+    } catch (const std::exception& e) {
+        std::cerr << "Error launching async task: " << e.what() << std::endl;
     }
 }
 
 void AjazzGUI::ModeWindow() {
     ImGui::BeginGroup();
 
-    static int selectedMode = 1;
     ImGui::BeginGroup();
-        if (ImGui::RadioButton("LED off", &selectedMode, 0)) {
-            this->m_mode = AK820Pro::LED_OFF;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
 
-        if (ImGui::RadioButton("Static", &selectedMode, 1)) {
-            this->m_mode = AK820Pro::STATIC;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Single on", &selectedMode, 2)) {
-            this->m_mode = AK820Pro::SINGLE_ON;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Single off", &selectedMode, 3)) {
-            this->m_mode = AK820Pro::SINGLE_OFF;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Glittering", &selectedMode, 4)) {
-            this->m_mode = AK820Pro::GLITTERING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
+    ImGui::Text("LED lighting modes");
 
-
-
-        if (ImGui::RadioButton("Falling", &selectedMode, 5)) {
-            this->m_mode = AK820Pro::FALLING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
+    for (const auto&[mode, name] : LIGHT_MODES) {
+        modeIdx++;
+        if (ImGui::RadioButton(name, &selectedMode, mode)) {
+            GetConfig()->mode = mode;
         }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Colourful", &selectedMode, 6)) {
-            this->m_mode = AK820Pro::COLOURFUL;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
+        if (modeIdx != 4) {
+            ImGui::SameLine(0, 10);
+        } else {
+            modeIdx = 0;
         }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Breath", &selectedMode, 7)) {
-            this->m_mode = AK820Pro::BREATH;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Spectrum", &selectedMode, 8)) {
-            this->m_mode = AK820Pro::SPECTRUM;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-
-
-        if (ImGui::RadioButton("Outward", &selectedMode, 9)) {
-            this->m_mode = AK820Pro::OUTWARD;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Scrolling", &selectedMode, 10)) {
-            this->m_mode = AK820Pro::SCROLLING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Rolling", &selectedMode, 11)) {
-            this->m_mode = AK820Pro::ROLLING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Rotating", &selectedMode, 12)) {
-            this->m_mode = AK820Pro::ROTATING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-
-
-        if (ImGui::RadioButton("Explode", &selectedMode, 13)) {
-            this->m_mode = AK820Pro::EXPLODE;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Launch", &selectedMode, 14)) {
-            this->m_mode = AK820Pro::LAUNCH;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Ripples", &selectedMode, 15)) {
-            this->m_mode = AK820Pro::RIPPLES;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Flowing", &selectedMode, 16)) {
-            this->m_mode = AK820Pro::FLOWING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-
-        if (ImGui::RadioButton("Pulsating", &selectedMode, 17)) {
-            this->m_mode = AK820Pro::PULSATING;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Tilt", &selectedMode, 18)) {
-            this->m_mode = AK820Pro::TILT;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-        ImGui::SameLine(0, 10);
-        if (ImGui::RadioButton("Shuttle", &selectedMode, 19)) {
-            this->m_mode = AK820Pro::SHUTTLE;
-            std::future<void> future = std::async([this] {
-                this->changeMode();
-            });
-        }
-    ImGui::EndGroup();
-
-    ImGui::SameLine(0, 15);
-
-    if (ImGui::ColorPicker3("", this->m_keyboardRGBColor, ImGuiColorEditFlags_NoSidePreview |
-                                                                                ImGuiColorEditFlags_NoSmallPreview |
-                                                                                ImGuiColorEditFlags_NoOptions |
-                                                                                ImGuiColorEditFlags_PickerHueWheel)) {
-        std::future<void> future = std::async([this] {
-            this->changeMode();
-        });
-    }
-
-    ImGui::BeginGroup();
-    if (ImGui::Checkbox("Rainbow", &this->m_rainbow)) {
-        std::future<void> future = std::async([this] {
-            this->changeMode();
-        });
-    }
-
-    if (ImGui::SliderInt("Brightness", &this->m_brightness, 0, 5)) {
-        std::future<void> future = std::async([this] {
-            this->changeMode();
-        });
-    }
-
-    if (ImGui::SliderInt("Speed", &this->m_speed, 0, 5)) {
-        std::future<void> future = std::async([this] {
-            this->changeMode();
-        });
-    }
-
-    ImGui::BeginGroup();
-    static int selectedTime = 0;
-
-    if (ImGui::RadioButton("No Sleep", &selectedTime, 0)) {
-        std::future<void> future = std::async([this] {
-            this->m_keyboard.setSleepTime(AK820Pro::NONE);
-        });
-    }
-
-    ImGui::SameLine(0, 10);
-    if (ImGui::RadioButton("1 Minute", &selectedTime, 1)) {
-        std::future<void> future = std::async([this] {
-            this->m_keyboard.setSleepTime(AK820Pro::ONE_MIN);
-        });
-    }
-
-    ImGui::SameLine(0, 10);
-    if (ImGui::RadioButton("5 Minute", &selectedTime, 2)) {
-        std::future<void> future = std::async([this] {
-            this->m_keyboard.setSleepTime(AK820Pro::FIVE_MIN);
-        });
-    }
-
-    ImGui::SameLine(0, 10);
-    if (ImGui::RadioButton("30 Minutes", &selectedTime, 3)) {
-        std::future<void> future = std::async([this] {
-            this->m_keyboard.setSleepTime(AK820Pro::THIRTY_MIN);
-        });
     }
 
     ImGui::EndGroup();
 
+    ImGui::Dummy(ImVec2(0, 10));
+
+    ImGui::BeginGroup();
+    if (ImGui::Checkbox("Rainbow", &GetConfig()->rainbow)) {
+        showColorPickerButton = !GetConfig()->rainbow;
+    }
+
+    if (showColorPickerButton) {
+        if (ImGui::Button("Pick Color...")) {
+            showColorPicker = true;
+        }
+    }
+
     ImGui::EndGroup();
+
+    ImGui::Dummy(ImVec2(0, 10));
+
+    ImGui::BeginGroup();
+    ImGui::SliderInt("Brightness", &GetConfig()->brightness, 0, MAX_BRIGHTNESS);
+    ImGui::SliderInt("Speed", &GetConfig()->speed, 0, MAX_SPEED);
+
+    ImGui::BeginGroup();
+    for (const auto&[mode, mode_name] : SLEEP_DELAY) {
+        sleepIdx++;
+        if (ImGui::RadioButton(mode_name, &selectedTime, mode)) {
+            GetConfig()->sleep_delay = mode;
+        }
+        if (sleepIdx < SLEEP_DELAY.size()) {
+            ImGui::SameLine(0, 10);
+        } else {
+            sleepIdx = 0;
+        }
+    }
+    ImGui::EndGroup();
+
+    ImGui::Dummy(ImVec2(0, 10));
+
+    ImGui::BeginGroup();
+    for (const auto& [mode, directions] : DIRECTIONS_PER_MODE) {
+        if (GetConfig()->mode != mode) continue;
+        for (const auto& direction : directions) {
+            directionIdx++;
+            if (ImGui::RadioButton(DIRECTIONS.at(direction), &selectedDirection, direction)) {
+                GetConfig()->direction = direction;
+            }
+            if (sleepIdx < DIRECTIONS.size()) {
+                ImGui::SameLine(0, 10);
+            } else {
+                sleepIdx = 0;
+            }
+        }
+    }
+    ImGui::EndGroup();
+
+    ImGui::Dummy(ImVec2(0, 10));
+
+    ImGui::EndGroup();
+
+    if (ImGui::Button("Apply")) {
+        this->changeMode();
+    }
+
+    if (showColorPicker) {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+        GLFWwindow* detached_window = glfwCreateWindow(800, 600, "Color Picker", nullptr, this->m_window);
+        if (!detached_window) {
+            return;
+        }
+
+        GLFWwindow* previous_context = glfwGetCurrentContext();
+        ImGuiContext* previous_imgui_context = ImGui::GetCurrentContext();
+
+        glfwMakeContextCurrent(detached_window);
+
+        ImGuiContext* new_context = ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void) io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        ImGui::SetCurrentContext(new_context);
+
+        ImGui_ImplGlfw_InitForOpenGL(detached_window, true);
+        ImGui_ImplOpenGL3_Init("#version 130");
+
+        glfwSetWindowCloseCallback(detached_window, [](GLFWwindow* window) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        });
+
+        while (!glfwWindowShouldClose(detached_window)) {
+            glfwPollEvents();
+
+            if (!glfwGetWindowAttrib(detached_window, GLFW_VISIBLE)) {
+                break;
+            }
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            ImGui::Begin("LED Color Picker", &showColorPicker, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+            if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                int x, y;
+                glfwGetWindowPos(detached_window, &x, &y);
+                glfwSetWindowPos(detached_window, x + delta.x, y + delta.y);
+            }
+
+            int width, height;
+            glfwGetWindowSize(m_window, &width, &height);
+            ImGui::SetWindowSize(ImVec2(static_cast<float>(width), (static_cast<float>(height) - this->m_titlebarHeight)), ImGuiCond_Always);
+            ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+            ImGui::SetNextWindowContentSize(ImVec2(static_cast<float>(width), static_cast<float>(height)));
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::SetNextWindowSizeConstraints(ImVec2(static_cast<float>(width), static_cast<float>(height)), ImVec2(static_cast<float>(width), static_cast<float>(height)));
+
+            ImGui::ColorPicker3("##colorpicker",
+                                GetConfig()->keyboard_rgb,
+                                ImGuiColorEditFlags_NoAlpha);
+
+            if (!showColorPicker) {
+                glfwSetWindowShouldClose(detached_window, GLFW_TRUE);
+            }
+
+            ImGui::End();
+
+            ImGui::Render();
+            int display_w, display_h;
+            glfwGetFramebufferSize(detached_window, &display_w, &display_h);
+            glViewport(0, 0, display_w, display_h);
+            glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+            glfwSwapBuffers(detached_window);
+        }
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        glfwDestroyWindow(detached_window);
+
+        showColorPicker = false;
+
+        glfwMakeContextCurrent(previous_context);
+        ImGui::SetCurrentContext(previous_imgui_context);
+    }
 
     ImGui::EndGroup();
 }

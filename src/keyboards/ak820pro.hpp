@@ -5,8 +5,10 @@
 #ifndef AJAZZ_HPP
 #define AJAZZ_HPP
 
+#include <future>
 #include <iomanip>
 #include <string>
+#include <vector>
 #include <hidapi/hidapi.h>
 
 #include "keyboarddefs.hpp"
@@ -31,29 +33,29 @@ class AK820Pro {
 
 public:
     enum LightingMode {
-        LED_OFF = 0x00,
-        STATIC = 0x01,
-        SINGLE_ON = 0x02,
-        SINGLE_OFF = 0x03,
-        GLITTERING = 0x04,
-        FALLING = 0x05,
-        COLOURFUL = 0x06,
-        BREATH = 0x07,
-        SPECTRUM = 0x08,
-        OUTWARD = 0x09,
-        SCROLLING = 0x0a,
-        ROLLING = 0x0b,
-        ROTATING = 0x0c,
-        EXPLODE = 0x0d,
-        LAUNCH = 0x0e,
-        RIPPLES = 0x0f,
-        FLOWING = 0x10,
-        PULSATING = 0x11,
-        TILT = 0x12,
-        SHUTTLE = 0x13,
+        LED_OFF,
+        STATIC,
+        SINGLE_ON,
+        SINGLE_OFF,
+        GLITTERING,
+        FALLING,
+        COLOURFUL,
+        BREATH,
+        SPECTRUM,
+        OUTWARD,
+        SCROLLING,
+        ROLLING,
+        ROTATING,
+        EXPLODE,
+        LAUNCH,
+        RIPPLES,
+        FLOWING,
+        PULSATING,
+        TILT,
+        SHUTTLE,
     };
 
-    enum DIRECTION {
+    enum Direction {
         LEFT,
         UP,
         DOWN,
@@ -70,15 +72,25 @@ public:
     explicit AK820Pro(uint16_t vid, uint16_t pid);
     ~AK820Pro();
 
+    void openHandle();
+    void closeHandle();
+
     void setColor(uint8_t r, uint8_t g, uint8_t b) const;
     void setMode(LightingMode mode, uint8_t r = 255, uint8_t g = 0 , uint8_t b = 0,
-                bool rainbow = true, int brightness = MAX_BRIGHTNESS, int speed = MAX_SPEED, DIRECTION direction = LEFT);
-    void setSleepTime(LightSleepTime sleep_time);
+                bool rainbow = true, int brightness = MAX_BRIGHTNESS, int speed = MAX_SPEED, Direction direction = LEFT) const;
+    std::future<void> setModeAsync(const LightingMode mode, const uint8_t r, const uint8_t g, const uint8_t b,
+                                   const bool rainbow, const int brightness, const int speed, const Direction direction) const;
+
+    void setSleepTime(LightSleepTime sleep_time) const;
+    std::future<void> setSleepTimeAsync(const LightSleepTime sleep_time) const;
+
     void uploadGIF(const std::string& path) const;
 private:
     uint16_t vid;
     uint16_t pid;
     hid_device* handle = nullptr;
+
+    void executeHIDCommand(const std::vector<uint8_t*>& commands) const;
 };
 
 #endif //AJAZZ_HPP

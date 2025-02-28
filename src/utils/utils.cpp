@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "keyboards/keyboarddefs.hpp"
+#include "../keyboards/keyboarddefs.hpp"
 
 std::vector<std::vector<uint8_t>> utils::split_data(const uint8_t* data, const size_t data_length) {
     constexpr size_t NUM_CHUNKS = 9;
@@ -39,10 +39,30 @@ std::string utils::wstr2str(const std::wstring &wstr) {
     return str;
 }
 
-void utils::printHexData(const unsigned char *data, int length) {
+void utils::printHexData(const unsigned char *data, const int length) {
     for (int i = 0; i < length; i++) {
         std::cout << std::hex << std::setw(2) << std::setfill('0')
         << static_cast<int>(data[i]) << " ";
     }
     std::cout << std::dec << std::endl;
+}
+
+void utils::MessageBox(const std::string& title, const std::string& message) {
+    char cmd[1024];
+    snprintf(cmd, 1024, R"(zenity --error --text="%s" --title="%s")", message.c_str(), title.c_str());
+    FILE* fp = popen(cmd, "r");
+    pclose(fp);
+}
+
+std::string utils::openFileDialog(const char* filters) {
+    char path[1024] = {};
+    char cmd[1024];
+    snprintf(cmd, 1024, "zenity --file-selection --file-filter=%s --title \"Select your cheat shared library\"", filters);
+    FILE* fp = popen(cmd, "r");
+    fgets(path, sizeof(path), fp);
+    char* newline = strchr(path, '\n');
+    if (newline != nullptr)
+        *newline = 0;
+    pclose(fp);
+    return {path};
 }

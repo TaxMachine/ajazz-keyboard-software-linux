@@ -3,12 +3,11 @@
 #include <iostream>
 
 #include "GUI/app.hpp"
-#include "utils.hpp"
-
-auto keyboard = std::make_unique<AK820Pro>(AJAZZ_VID, AK820PRO_PID);
+#include "constants.hpp"
 
 void signalHandler(int signum) {
-    keyboard.reset();
+    GetKeyboard().reset();
+    GetConfig().reset();
     exit(0);
 }
 
@@ -16,8 +15,13 @@ int main(int argc, char* argv[]) {
     signal(SIGABRT, signalHandler);
     signal(SIGTERM, signalHandler);
     signal(SIGSEGV, signalHandler);
+
     try {
-        AjazzGUI gui("Ajazz Keyboard software", *keyboard);
+        AjazzGUI gui("Ajazz Keyboard software");
+
+        GetConfig() = std::make_shared<Config>();
+        GetKeyboard() = std::make_shared<AK820Pro>(AJAZZ_VID, AK820PRO_PID);
+
         gui.run();
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;

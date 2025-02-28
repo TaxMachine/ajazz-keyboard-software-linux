@@ -11,11 +11,14 @@
 #include "../backends/imgui_impl_opengl3.h"
 #include "../backends/imgui_impl_glfw.h"
 
-static void glfw_error_callback(int error, const char* description) {
+static void glfw_error_callback(const int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-AjazzGUI::AjazzGUI(std::string applicationName, const AK820Pro& keyboard) : m_applicationName(std::move(applicationName)), m_keyboard(keyboard) {}
+AjazzGUI::AjazzGUI(std::string applicationName) : m_applicationName(std::move(applicationName)) {
+    initWindow();
+    initIMGUI();
+}
 
 AjazzGUI::~AjazzGUI() {
     ImGui_ImplOpenGL3_Shutdown();
@@ -26,8 +29,6 @@ AjazzGUI::~AjazzGUI() {
 }
 
 void AjazzGUI::run() {
-    initWindow();
-    initIMGUI();
     mainLoop();
 }
 
@@ -107,9 +108,15 @@ void AjazzGUI::render() {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Macros")) {
+            this->MacrosWindow();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("TFT Screen")) {
+            this->TFTScreenWindow();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Theme Editor")) {
+            this->ThemeEditorWindow();
             ImGui::EndTabItem();
         }
     }
