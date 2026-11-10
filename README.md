@@ -14,6 +14,7 @@ This is a software to control LEDs, lighting modes, LCD screen and macros
 ## SO tested
  - Arch Linux with GNOME
  - Arch Linux with KDE
+ - Arch Linux with Hyprland
 
 ## Installation & Build
 Usual cmake build. You need the following dependencies:
