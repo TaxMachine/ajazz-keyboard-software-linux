@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: Configure",
+      "type": "shell",
+      "command": "cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Configurar CMake en modo Debug y generar compile_commands.json"
+    },
+    {
+      "label": "CMake: Build",
+      "type": "shell",
+      "command": "cmake --build build -j$(nproc)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "detail": "Compilar el binario ak820proLED"
+    },
+    {
+      "label": "CMake: Clean",
+      "type": "shell",
+      "command": "cmake --build build --target clean",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Limpiar artefactos de compilación"
+    },
+    {
+      "label": "CMake: Rebuild",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "CMake: Clean",
+        "CMake: Build"
+      ],
+      "problemMatcher": [],
+      "detail": "Limpiar y recompilar completamente el proyecto"
+    }
+  ]
+}

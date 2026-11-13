@@ -1,22 +1,48 @@
-# Linux Software for the Ajazz SONiX AK820 Pro (VID 0x8009)
+# Linux Software for the Ajazz
 This is a software to control LEDs, lighting modes, LCD screen and macros
 
 ## TODO
+ - [ ] Install and easy use
  - [x] Lighting modes
  - [ ] Individual LEDs
  - [ ] Macros
- - [ ] LCD screen images & GIF
+ - [x] LCD screen images & GIF
+ - [x] MULTI LANGUAGE SUPPORT
  - [ ] Sound Reaction (??)
+ - [ ] Battery Status
 
-## Installation
-Usual cmake build. You also need to install [hidapi](https://github.com/libusb/hidapi)
+## SO tested
+ - Arch Linux with GNOME
+ - Arch Linux with KDE
+ - Arch Linux with Hyprland
+
+## Installation & Build
+Usual cmake build. You need the following dependencies:
 ```bash
-sudo apt install libhidapi-dev
+sudo apt install cmake g++ libhidapi-dev libgtk-3-dev libglfw3-dev libgl1-mesa-dev
+```
+Then build the project:
+```bash
+cmake -B build && cmake --build build -j$(nproc)
 ```
 
-## How did I do it
-At first, I thought it would be a good idea to reverse engineer the
-official software but since it's made by chinese developers, even
-the decompilation had weird control flow and logic so instead I used
-Wireshark with PCapUSB to sniff packets and compare them
-[I made a parser for pcap files that parses packets and show their infos](https://github.com/TaxMachine/ajazz-keyboard-software-linux/blob/master/analyze/hidfilter.py)
+## Linux Device Permissions (udev rules)
+To use the software without root (`sudo`) and enable RGB and TFT screen uploads for both **USB cable** and **2.4GHz wireless dongle**:
+
+```bash
+echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0c45", MODE="0666"' | sudo tee /etc/udev/rules.d/99-ajazz-keyboard.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+After applying the rule, unplug and replug the USB cable or 2.4GHz receiver.
+> **Note on Screen Uploads:** TFT screen image and GIF transfers require the keyboard to be connected directly via USB cable.
+
+## Credits & Modifications
+- Original software by [TaxMachine](https://github.com/TaxMachine/ajazz-keyboard-software-linux).
+- Modified and extended by **Vixcho** (October 2026):
+  - 2.4GHz wireless dongle support and dual-interface communication
+  - TFT Screen image and animated GIF uploading with live preview and progress tracking
+  - Local screen gallery cache
+  - Multi-language support (English default & Spanish)
+  - Dedicated configuration settings tab with persistent storage
+  - Per-key individual RGB lighting editor and macro management
+  - Diagnostic logs viewer and universal udev permission tools

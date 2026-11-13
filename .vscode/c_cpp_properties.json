@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/imgui/include",
+        "${workspaceFolder}/lodepng/include"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/g++",
+      "cStandard": "c17",
+      "cppStandard": "c++23",
+      "intelliSenseMode": "linux-gcc-x64",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+    }
+  ],
+  "version": 4
+}
